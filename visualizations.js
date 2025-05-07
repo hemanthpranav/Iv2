@@ -11,6 +11,11 @@ class CarVisualization {
             cylinders: 'all'
         };
         this.selectedPoints = new Set();
+        this.persistentLabels = {
+            barChart: null,
+            scatterPlot: null,
+            weightDistribution: null
+        };
         
         this.init();
     }
@@ -18,6 +23,20 @@ class CarVisualization {
     async init() {
         await this.loadData();
         this.initControls();
+        
+        // Create tooltip div
+        this.tooltip = d3.select("body")
+          .append("div")
+          .attr("class", "tooltip")
+          .style("position", "absolute")
+          .style("padding", "6px 10px")
+          .style("background", "rgba(0, 0, 0, 0.7)")
+          .style("color", "#fff")
+          .style("border-radius", "4px")
+          .style("font-size", "12px")
+          .style("pointer-events", "none")
+          .style("opacity", 0);
+
         this.createVisualizations();
     }
 
@@ -69,7 +88,7 @@ class CarVisualization {
             .data(["all", ...cylinders])
             .join("option")
             .attr("value", d => d)
-            .text(d => d === "all" ? "All Cylinders" : ${d} cylinders);
+            .text(d => d === "all" ? "All Cylinders" : `${d} cylinders`);
 
         // Event listeners
         d3.selectAll(".filter").on("change", () => this.applyFilters());
@@ -89,6 +108,11 @@ class CarVisualization {
         d3.selectAll(".filter").property("value", "all");
         this.filters = { manufacturer: 'all', origin: 'all', cylinders: 'all' };
         this.selectedPoints.clear();
+        this.persistentLabels = {
+            barChart: null,
+            scatterPlot: null,
+            weightDistribution: null
+        };
         this.updateVisualizations();
     }
 
@@ -116,7 +140,7 @@ class CarVisualization {
             .attr("width", this.width + this.margin.left + this.margin.right)
             .attr("height", this.height + this.margin.top + this.margin.bottom)
             .append("g")
-            .attr("transform", translate(${this.margin.left},${this.margin.top}));
+            .attr("transform", `translate(${this.margin.left},${this.margin.top})`);
 
         // Calculate average MPG by manufacturer
         const avgMPG = d3.rollups(
@@ -152,23 +176,33 @@ class CarVisualization {
                 this.selectedPoints.size > 0 && 
                 data.some(car => car.Manufacturer === d.Manufacturer && this.selectedPoints.has(car.Car)))
             .on("click", (event, d) => {
-    this.selectedPoints = new Set(
-        this.data.filter(car => car.Manufacturer === d.Manufacturer).map(c => c.Car)
-    );
-    this.updateVisualizations();
-
-    d3.select("#bar-chart svg g").selectAll(".label").remove();
-    svg.append("text")
-        .attr("class", "label")
-        .attr("x", x(d.MPG) + 10)
-        .attr("y", y(d.Manufacturer) + y.bandwidth() / 2 + 5)
-        .text(${d.Manufacturer}: ${d.MPG.toFixed(1)} MPG)
-        .attr("fill", "black");
-})
+                this.selectedPoints = new Set(
+                    this.data.filter(car => car.Manufacturer === d.Manufacturer).map(c => c.Car)
+                );
+                this.persistentLabels.barChart = {
+                    text: `${d.Manufacturer}: ${d.MPG.toFixed(1)} MPG`,
+                    x: x(d.MPG) + 10,
+                    y: y(d.Manufacturer) + y.bandwidth() / 2 + 5
+                };
+                this.updateVisualizations();
+            })
+            .on("mouseover", (event, d) => {
+                this.tooltip
+                    .style("opacity", 1)
+                    .html(`<strong>${d.Manufacturer}</strong><br>Avg MPG: ${d.MPG.toFixed(1)}`);
+            })
+            .on("mousemove", (event) => {
+                this.tooltip
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", () => {
+                this.tooltip.style("opacity", 0);
+            });
 
         // Add axes
         svg.append("g")
-            .attr("transform", translate(0,${this.height}))
+            .attr("transform", `translate(0,${this.height})`)
             .call(d3.axisBottom(x));
 
         svg.append("g")
@@ -180,6 +214,16 @@ class CarVisualization {
             .attr("y", this.height + this.margin.bottom - 10)
             .style("text-anchor", "middle")
             .text("Average MPG");
+
+        // Add persistent label if exists
+        if (this.persistentLabels.barChart) {
+            svg.append("text")
+                .attr("class", "label")
+                .attr("x", this.persistentLabels.barChart.x)
+                .attr("y", this.persistentLabels.barChart.y)
+                .text(this.persistentLabels.barChart.text)
+                .attr("fill", "black");
+        }
     }
 
     renderScatterPlot(data) {
@@ -190,7 +234,7 @@ class CarVisualization {
             .attr("width", this.width + this.margin.left + this.margin.right)
             .attr("height", this.height + this.margin.top + this.margin.bottom)
             .append("g")
-            .attr("transform", translate(${this.margin.left},${this.margin.top}));
+            .attr("transform", `translate(${this.margin.left},${this.margin.top})`);
 
         // Create scales
         const x = d3.scaleLinear()
@@ -218,21 +262,27 @@ class CarVisualization {
             .attr("opacity", 0.7)
             .classed("highlighted", d => this.selectedPoints.has(d.Car))
             .on("click", (event, d) => {
-    this.selectedPoints = new Set([d.Car]);
-    this.updateVisualizations();
-    
-    // Remove old labels
-    d3.select("#scatter-plot svg g").selectAll(".label").remove();
-
-    // Add new label
-    svg.append("text")
-        .attr("class", "label")
-        .attr("x", x(d.Horsepower) + 10)
-        .attr("y", y(d.MPG) - 10)
-        .attr("fill", "black")
-        .attr("font-size", "12px")
-        .text(${d.Car} (${d.MPG} MPG));
-})
+                this.selectedPoints = new Set([d.Car]);
+                this.persistentLabels.scatterPlot = {
+                    text: `${d.Car} (${d.MPG} MPG)`,
+                    x: x(d.Horsepower) + 10,
+                    y: y(d.MPG) - 10
+                };
+                this.updateVisualizations();
+            })
+            .on("mouseover", (event, d) => {
+                this.tooltip
+                    .style("opacity", 1)
+                    .html(`<strong>${d.Car}</strong><br>MPG: ${d.MPG}<br>HP: ${d.Horsepower}`);
+            })
+            .on("mousemove", (event) => {
+                this.tooltip
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", () => {
+                this.tooltip.style("opacity", 0);
+            });
 
         // Add brush
         const brush = d3.brush()
@@ -246,6 +296,7 @@ class CarVisualization {
                         y(d.MPG) >= y0 && y(d.MPG) <= y1
                     ).map(d => d.Car)
                 );
+                this.persistentLabels.scatterPlot = null; // Clear label when brushing
                 this.updateVisualizations();
             })
             .on("end", (event) => {
@@ -261,7 +312,7 @@ class CarVisualization {
 
         // Add axes
         svg.append("g")
-            .attr("transform", translate(0,${this.height}))
+            .attr("transform", `translate(0,${this.height})`)
             .call(d3.axisBottom(x));
 
         svg.append("g")
@@ -280,6 +331,17 @@ class CarVisualization {
             .attr("x", -this.height / 2)
             .style("text-anchor", "middle")
             .text("MPG");
+
+        // Add persistent label if exists
+        if (this.persistentLabels.scatterPlot) {
+            svg.append("text")
+                .attr("class", "label")
+                .attr("x", this.persistentLabels.scatterPlot.x)
+                .attr("y", this.persistentLabels.scatterPlot.y)
+                .attr("fill", "black")
+                .attr("font-size", "12px")
+                .text(this.persistentLabels.scatterPlot.text);
+        }
     }
 
     renderWeightDistribution(data) {
@@ -290,7 +352,7 @@ class CarVisualization {
             .attr("width", this.width + this.margin.left + this.margin.right)
             .attr("height", this.height + this.margin.top + this.margin.bottom)
             .append("g")
-            .attr("transform", translate(${this.margin.left},${this.margin.top}));
+            .attr("transform", `translate(${this.margin.left},${this.margin.top})`);
 
         // Group data by origin
         const groups = d3.groups(data, d => d.Origin);
@@ -333,20 +395,29 @@ class CarVisualization {
                 .attr("fill", color(origin))
                 .attr("stroke", "#000")
                 .attr("class", "data-point")
-.on("click", (event) => {
-    const carNames = values.map(v => v.Car);
-    this.selectedPoints = new Set(carNames);
-    this.updateVisualizations();
-
-    d3.select("#weight-distribution svg g").selectAll(".label").remove();
-    svg.append("text")
-        .attr("class", "label")
-        .attr("x", xPos + 10)
-        .attr("y", y(median) - 10)
-        .attr("fill", "black")
-        .text(${origin}: Median ${median.toFixed(0)} lbs);
-})
-
+                .on("mouseover", (event) => {
+                    this.tooltip
+                        .style("opacity", 1)
+                        .html(`<strong>${origin}</strong><br>Median Weight: ${median.toFixed(0)} lbs`);
+                })
+                .on("mousemove", (event) => {
+                    this.tooltip
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", () => {
+                    this.tooltip.style("opacity", 0);
+                })
+                .on("click", (event) => {
+                    const carNames = values.map(v => v.Car);
+                    this.selectedPoints = new Set(carNames);
+                    this.persistentLabels.weightDistribution = {
+                        text: `${origin}: Median ${median.toFixed(0)} lbs`,
+                        x: xPos + 10,
+                        y: y(median) - 10
+                    };
+                    this.updateVisualizations();
+                })
                 .classed("highlighted", () => 
                     values.some(v => this.selectedPoints.has(v.Car)));
 
@@ -393,27 +464,36 @@ class CarVisualization {
                 .attr("fill", color(origin))
                 .attr("stroke", "#000")
                 .attr("class", "data-point")
-.on("click", (event) => {
-    const carNames = values.map(v => v.Car);
-    this.selectedPoints = new Set(carNames);
-    this.updateVisualizations();
-
-    d3.select("#weight-distribution svg g").selectAll(".label").remove();
-    svg.append("text")
-        .attr("class", "label")
-        .attr("x", xPos + 10)
-        .attr("y", y(median) - 10)
-        .attr("fill", "black")
-        .text(${origin}: Median ${median.toFixed(0)} lbs);
-})
-
+                .on("mouseover", (event) => {
+                    this.tooltip
+                        .style("opacity", 1)
+                        .html(`<strong>${origin}</strong><br>Median Weight: ${median.toFixed(0)} lbs`);
+                })
+                .on("mousemove", (event) => {
+                    this.tooltip
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", () => {
+                    this.tooltip.style("opacity", 0);
+                })
+                .on("click", (event) => {
+                    const carNames = values.map(v => v.Car);
+                    this.selectedPoints = new Set(carNames);
+                    this.persistentLabels.weightDistribution = {
+                        text: `${origin}: Median ${median.toFixed(0)} lbs`,
+                        x: xPos + 10,
+                        y: y(median) - 10
+                    };
+                    this.updateVisualizations();
+                })
                 .classed("highlighted", d => 
                     values.some(v => v.Weight === d && this.selectedPoints.has(v.Car)));
         });
 
         // Add axes
         svg.append("g")
-            .attr("transform", translate(0,${this.height}))
+            .attr("transform", `translate(0,${this.height})`)
             .call(d3.axisBottom(x));
 
         svg.append("g")
@@ -432,6 +512,16 @@ class CarVisualization {
             .attr("x", -this.height / 2)
             .style("text-anchor", "middle")
             .text("Weight (lbs)");
+
+        // Add persistent label if exists
+        if (this.persistentLabels.weightDistribution) {
+            svg.append("text")
+                .attr("class", "label")
+                .attr("x", this.persistentLabels.weightDistribution.x)
+                .attr("y", this.persistentLabels.weightDistribution.y)
+                .attr("fill", "black")
+                .text(this.persistentLabels.weightDistribution.text);
+        }
     }
 }
 
