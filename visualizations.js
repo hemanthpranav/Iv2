@@ -1,91 +1,110 @@
-document.addEventListener('DOMContentLoaded', function () {
-  const xSelect = document.getElementById('x-select');
-  const ySelect = document.getElementById('y-select');
-  const colorSelect = document.getElementById('color-select');
-  const sizeSelect = document.getElementById('size-select');
-  const originFilter = document.getElementById('origin-filter');
-  const chartContainer = document.getElementById('chart-container');
+document.addEventListener('DOMContentLoaded', () => {
+  const manufacturerSelect = document.getElementById('manufacturer-select');
+  const originSelect = document.getElementById('origin-select');
+  const cylindersSelect = document.getElementById('cylinders-select');
+  const resetBtn = document.getElementById('reset-btn');
 
-  let data = [];
-  let numericCols = [];
-  let categoricalCols = [];
+  let rawData = [];
 
-  d3.csv('a1-cars.csv').then((csvData) => {
-    data = csvData.map(d => {
-      const parsed = {};
-      for (const key in d) {
-        const value = d[key];
-        const num = +value;
-        parsed[key] = isNaN(num) ? value : num;
+  d3.csv("a1-cars.csv").then(data => {
+    // Convert numeric fields
+    rawData = data.map(d => {
+      for (let key in d) {
+        const num = +d[key];
+        d[key] = isNaN(num) ? d[key] : num;
       }
-      return parsed;
+      return d;
     });
 
-    // Detect column types
-    const sample = data[0];
-    for (const key in sample) {
-      if (typeof sample[key] === 'number') numericCols.push(key);
-      else categoricalCols.push(key);
+    populateFilters();
+    updateCharts();
+
+    manufacturerSelect.addEventListener('change', updateCharts);
+    originSelect.addEventListener('change', updateCharts);
+    cylindersSelect.addEventListener('change', updateCharts);
+    resetBtn.addEventListener('click', () => {
+      manufacturerSelect.selectedIndex = 0;
+      originSelect.selectedIndex = 0;
+      cylindersSelect.selectedIndex = 0;
+      updateCharts();
+    });
+  });
+
+  function populateFilters() {
+    const unique = (key) => [...new Set(rawData.map(d => d[key]))].sort();
+
+    for (const val of unique("Manufacturer")) {
+      manufacturerSelect.add(new Option(val, val));
     }
 
-    // Populate dropdowns
-    numericCols.forEach(col => {
-      xSelect.add(new Option(col, col));
-      ySelect.add(new Option(col, col));
-      sizeSelect.add(new Option(col, col));
-    });
-    categoricalCols.forEach(col => {
-      colorSelect.add(new Option(col, col));
-    });
+    for (const val of unique("Origin")) {
+      originSelect.add(new Option(val, val));
+    }
 
-    const origins = Array.from(new Set(data.map(d => d.Origin)));
-    originFilter.add(new Option("All", "All"));
-    origins.forEach(origin => {
-      originFilter.add(new Option(origin, origin));
-    });
+    for (const val of unique("Cylinders")) {
+      cylindersSelect.add(new Option(val, val));
+    }
+  }
 
-    renderScatter();
-    renderBar();
-  });
+  function getFilteredData() {
+    const manufacturer = manufacturerSelect.value;
+    const origin = originSelect.value;
+    const cylinders = cylindersSelect.value;
 
-  xSelect.addEventListener('change', renderScatter);
-  ySelect.addEventListener('change', renderScatter);
-  colorSelect.addEventListener('change', renderScatter);
-  sizeSelect.addEventListener('change', renderScatter);
-  originFilter.addEventListener('change', () => {
-    renderScatter();
-    renderBar();
-  });
+    return rawData.filter(d =>
+      (!manufacturer || d.Manufacturer === manufacturer) &&
+      (!origin || d.Origin === origin) &&
+      (!cylinders || d.Cylinders == cylinders)
+    );
+  }
 
-  function renderScatter() {
-    const xVar = xSelect.value;
-    const yVar = ySelect.value;
-    const colorVar = colorSelect.value;
-    const sizeVar = sizeSelect.value;
-    const filter = originFilter.value;
+  function updateCharts() {
+    const data = getFilteredData();
+    renderScatterPlot(data);
+    renderBarChart(data);
+  }
 
-    const filtered = filter === "All" ? data : data.filter(d => d.Origin === filter);
+  function renderScatterPlot(data) {
+    d3.select('#chart-hp-mpg').selectAll("*").remove();
 
-    d3.select('#scatter-plot').remove();
+    const width = 500, height = 350, margin = { top: 40, right: 30, bottom: 50, left: 60 };
 
-    const width = 600, height = 400, margin = {top: 50, right: 50, bottom: 50, left: 50};
-    const svg = d3.select(chartContainer)
+    const svg = d3.select('#chart-hp-mpg')
       .append("svg")
-      .attr("id", "scatter-plot")
       .attr("width", width)
       .attr("height", height);
 
-    const x = d3.scaleLinear().domain(d3.extent(filtered, d => d[xVar])).nice().range([margin.left, width - margin.right]);
-    const y = d3.scaleLinear().domain(d3.extent(filtered, d => d[yVar])).nice().range([height - margin.bottom, margin.top]);
-    const color = d3.scaleOrdinal(d3.schemeCategory10);
-    const size = d3.scaleLinear().domain(d3.extent(filtered, d => d[sizeVar])).nice().range([5, 12]);
+    const x = d3.scaleLinear()
+      .domain(d3.extent(data, d => d.Horsepower)).nice()
+      .range([margin.left, width - margin.right]);
 
-    svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x));
-    svg.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(y));
+    const y = d3.scaleLinear()
+      .domain(d3.extent(data, d => d.MPG)).nice()
+      .range([height - margin.bottom, margin.top]);
 
-    svg.append("text").attr("x", width / 2).attr("y", height - 10).attr("text-anchor", "middle").text(xVar);
-    svg.append("text").attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 15).attr("text-anchor", "middle").text(yVar);
+    svg.append("g")
+      .attr("transform", `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(x));
 
+    svg.append("g")
+      .attr("transform", `translate(${margin.left},0)`)
+      .call(d3.axisLeft(y));
+
+    // Axis labels
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", height - 5)
+      .attr("text-anchor", "middle")
+      .text("Horsepower");
+
+    svg.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("x", -height / 2)
+      .attr("y", 15)
+      .attr("text-anchor", "middle")
+      .text("MPG");
+
+    // Tooltip
     const tooltip = d3.select("body").append("div")
       .attr("class", "tooltip")
       .style("position", "absolute")
@@ -96,16 +115,15 @@ document.addEventListener('DOMContentLoaded', function () {
       .style("border-radius", "4px");
 
     svg.selectAll("circle")
-      .data(filtered)
-      .enter()
-      .append("circle")
-      .attr("cx", d => x(d[xVar]))
-      .attr("cy", d => y(d[yVar]))
-      .attr("r", d => size(d[sizeVar]))
-      .attr("fill", d => color(d[colorVar]))
+      .data(data)
+      .join("circle")
+      .attr("cx", d => x(d.Horsepower))
+      .attr("cy", d => y(d.MPG))
+      .attr("r", 5)
+      .attr("fill", "steelblue")
       .attr("opacity", 0.7)
       .on("mouseover", (event, d) => {
-        tooltip.html(`${xVar}: ${d[xVar]}<br>${yVar}: ${d[yVar]}<br>${colorVar}: ${d[colorVar]}<br>${sizeVar}: ${d[sizeVar]}`)
+        tooltip.html(`Horsepower: ${d.Horsepower}<br>MPG: ${d.MPG}`)
           .style("visibility", "visible")
           .style("top", `${event.pageY - 10}px`)
           .style("left", `${event.pageX + 10}px`);
@@ -116,29 +134,53 @@ document.addEventListener('DOMContentLoaded', function () {
       .on("mouseout", () => tooltip.style("visibility", "hidden"));
   }
 
-  function renderBar() {
-    const filter = originFilter.value;
-    const filtered = filter === "All" ? data : data.filter(d => d.Origin === filter);
-    const counts = d3.rollup(filtered, v => v.length, d => d.Origin);
-    const barData = Array.from(counts, ([origin, count]) => ({ origin, count }));
+  function renderBarChart(data) {
+    d3.select('#chart-weight').selectAll("*").remove();
 
-    d3.select('#bar-chart').remove();
+    const width = 500, height = 350, margin = { top: 40, right: 30, bottom: 50, left: 60 };
 
-    const width = 600, height = 400, margin = {top: 50, right: 50, bottom: 50, left: 50};
-    const svg = d3.select(chartContainer)
+    const grouped = d3.rollup(
+      data,
+      v => d3.mean(v, d => d.Weight),
+      d => d.Origin
+    );
+
+    const barData = Array.from(grouped, ([Origin, Weight]) => ({ Origin, Weight }));
+
+    const x = d3.scaleBand()
+      .domain(barData.map(d => d.Origin))
+      .range([margin.left, width - margin.right])
+      .padding(0.3);
+
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(barData, d => d.Weight)]).nice()
+      .range([height - margin.bottom, margin.top]);
+
+    const svg = d3.select('#chart-weight')
       .append("svg")
-      .attr("id", "bar-chart")
       .attr("width", width)
       .attr("height", height);
 
-    const x = d3.scaleBand().domain(barData.map(d => d.origin)).range([margin.left, width - margin.right]).padding(0.2);
-    const y = d3.scaleLinear().domain([0, d3.max(barData, d => d.count)]).nice().range([height - margin.bottom, margin.top]);
+    svg.append("g")
+      .attr("transform", `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(x));
 
-    svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x));
-    svg.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(y));
+    svg.append("g")
+      .attr("transform", `translate(${margin.left},0)`)
+      .call(d3.axisLeft(y));
 
-    svg.append("text").attr("x", width / 2).attr("y", height - 10).attr("text-anchor", "middle").text("Origin");
-    svg.append("text").attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 15).attr("text-anchor", "middle").text("Count");
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", height - 5)
+      .attr("text-anchor", "middle")
+      .text("Origin");
+
+    svg.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("x", -height / 2)
+      .attr("y", 15)
+      .attr("text-anchor", "middle")
+      .text("Average Weight");
 
     const tooltip = d3.select("body").append("div")
       .attr("class", "tooltip")
@@ -151,15 +193,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     svg.selectAll("rect")
       .data(barData)
-      .enter()
-      .append("rect")
-      .attr("x", d => x(d.origin))
-      .attr("y", d => y(d.count))
+      .join("rect")
+      .attr("x", d => x(d.Origin))
+      .attr("y", d => y(d.Weight))
       .attr("width", x.bandwidth())
-      .attr("height", d => height - margin.bottom - y(d.count))
-      .attr("fill", "steelblue")
+      .attr("height", d => height - margin.bottom - y(d.Weight))
+      .attr("fill", "teal")
       .on("mouseover", (event, d) => {
-        tooltip.html(`Origin: ${d.origin}<br>Count: ${d.count}`)
+        tooltip.html(`Origin: ${d.Origin}<br>Avg Weight: ${d.Weight.toFixed(1)}`)
           .style("visibility", "visible")
           .style("top", `${event.pageY - 10}px`)
           .style("left", `${event.pageX + 10}px`);
@@ -170,3 +211,4 @@ document.addEventListener('DOMContentLoaded', function () {
       .on("mouseout", () => tooltip.style("visibility", "hidden"));
   }
 });
+
