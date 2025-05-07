@@ -31,17 +31,18 @@ document.addEventListener('DOMContentLoaded', () => {
   function populateFilters() {
     const unique = key => [...new Set(rawData.map(d => d[key]))].sort();
 
-    manufacturerSelect.add(new Option("All", ""));
+    // Add user-friendly "All" options
+    manufacturerSelect.add(new Option("All Manufacturers", ""));
     unique("Manufacturer").forEach(val =>
       manufacturerSelect.add(new Option(val, val))
     );
 
-    originSelect.add(new Option("All", ""));
+    originSelect.add(new Option("All Origins", ""));
     unique("Origin").forEach(val =>
       originSelect.add(new Option(val, val))
     );
 
-    cylindersSelect.add(new Option("All", ""));
+    cylindersSelect.add(new Option("All Cylinders", ""));
     unique("Cylinders").forEach(val =>
       cylindersSelect.add(new Option(val, val))
     );
