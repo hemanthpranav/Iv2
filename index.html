@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Interactive Vehicle Dashboard</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Vehicle Data Dashboard</h1>
+  </header>
+  <div class="controls">
+    <label for="dataset-select">Dataset:</label>
+    <select id="dataset-select"></select>
+    <label for="x-axis-select">X-axis:</label>
+    <select id="x-axis-select"></select>
+    <label for="y-axis-select">Y-axis:</label>
+    <select id="y-axis-select"></select>
+    <label for="color-by-select">Color by:</label>
+    <select id="color-by-select"></select>
+    <label for="size-by-select">Size by:</label>
+    <select id="size-by-select"></select>
+  </div>
+  <div id="filters"></div>
+  <div class="chart-container">
+    <div id="scatter-plot-card" class="chart-card"></div>
+    <div id="bar-chart-card" class="chart-card"></div>
+    <div id="line-chart-card" class="chart-card"></div>
+    <div id="data-table-card" class="chart-card">
+      <table id="data-table">
+        <thead>
+          <tr><!-- headers will be populated by JS --></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="js/visualizations.js"></script>
+</body>
+</html>
