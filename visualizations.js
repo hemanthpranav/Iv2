@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let rawData = [];
 
   d3.csv("a1-cars.csv").then(data => {
-    // Convert numeric fields
     rawData = data.map(d => {
       for (let key in d) {
         const num = +d[key];
@@ -17,62 +16,128 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     populateFilters();
-    updateCharts();
+    updateAllCharts();
 
-    manufacturerSelect.addEventListener('change', updateCharts);
-    originSelect.addEventListener('change', updateCharts);
-    cylindersSelect.addEventListener('change', updateCharts);
+    manufacturerSelect.addEventListener('change', updateAllCharts);
+    originSelect.addEventListener('change', updateAllCharts);
+    cylindersSelect.addEventListener('change', updateAllCharts);
     resetBtn.addEventListener('click', () => {
       manufacturerSelect.selectedIndex = 0;
       originSelect.selectedIndex = 0;
       cylindersSelect.selectedIndex = 0;
-      updateCharts();
+      updateAllCharts();
     });
   });
 
   function populateFilters() {
-    const unique = (key) => [...new Set(rawData.map(d => d[key]))].sort();
+    const unique = key => [...new Set(rawData.map(d => d[key]))].sort();
 
-    for (const val of unique("Manufacturer")) {
-      manufacturerSelect.add(new Option(val, val));
-    }
-
-    for (const val of unique("Origin")) {
-      originSelect.add(new Option(val, val));
-    }
-
-    for (const val of unique("Cylinders")) {
-      cylindersSelect.add(new Option(val, val));
-    }
-  }
-
-  function getFilteredData() {
-    const manufacturer = manufacturerSelect.value;
-    const origin = originSelect.value;
-    const cylinders = cylindersSelect.value;
-
-    return rawData.filter(d =>
-      (!manufacturer || d.Manufacturer === manufacturer) &&
-      (!origin || d.Origin === origin) &&
-      (!cylinders || d.Cylinders == cylinders)
+    unique("Manufacturer").forEach(val =>
+      manufacturerSelect.add(new Option(val, val))
+    );
+    unique("Origin").forEach(val =>
+      originSelect.add(new Option(val, val))
+    );
+    unique("Cylinders").forEach(val =>
+      cylindersSelect.add(new Option(val, val))
     );
   }
 
-  function updateCharts() {
-    const data = getFilteredData();
-    renderScatterPlot(data);
-    renderBarChart(data);
+  function getFilteredData() {
+    const m = manufacturerSelect.value;
+    const o = originSelect.value;
+    const c = cylindersSelect.value;
+
+    return rawData.filter(d =>
+   (!m || d.Manufacturer === m) &&
+      (!o || d.Origin === o) &&
+      (!c || d.Cylinders == c)
+    );
   }
 
-  function renderScatterPlot(data) {
-    d3.select('#chart-hp-mpg').selectAll("*").remove();
+  function updateAllCharts() {
+    const data = getFilteredData();
+    renderFuelChart(data);
+    renderScatter(data);
+    renderBar(data);
+  }
 
-    const width = 500, height = 350, margin = { top: 40, right: 30, bottom: 50, left: 60 };
+  function renderFuelChart(data) {
+    d3.select('#chart-fuel').selectAll("*").remove();
+    const width = 500, height = 350, margin = {top: 40, right: 30, bottom: 50, left: 60};
 
-    const svg = d3.select('#chart-hp-mpg')
+    const grouped = d3.rollup(
+      data,
+      v => d3.mean(v, d => d.MPG),
+      d => d.Manufacturer
+    );
+
+    const barData = Array.from(grouped, ([Manufacturer, MPG]) => ({ Manufacturer, MPG }));
+
+    const x = d3.scaleBand()
+      .domain(barData.map(d => d.Manufacturer))
+      .range([margin.left, width - margin.right])
+      .padding(0.2);
+
+    const y = d3.scaleLinear()
+      .domain([0, d3.max(barData, d => d.MPG)]).nice()
+      .range([height - margin.bottom, margin.top]);
+
+    const svg = d3.select('#chart-fuel')
       .append("svg")
       .attr("width", width)
       .attr("height", height);
+
+    svg.append("g")
+      .attr("transform", `translate(0,${height - margin.bottom})`)
+      .call(d3.axisBottom(x))
+      .selectAll("text")
+      .attr("transform", "rotate(-45)")
+      .style("text-anchor", "end");
+
+    svg.append("g")
+      .attr("transform", `translate(${margin.left},0)`)
+      .call(d3.axisLeft(y));
+
+    svg.append("text")
+      .attr("x", width / 2)
+      .attr("y", height - 5)
+      .attr("text-anchor", "middle")
+      .text("Manufacturer");
+
+    svg.append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("x", -height / 2)
+      .attr("y", 15)
+      .attr("text-anchor", "middle")
+      .text("Average MPG");
+
+    const tooltip = createTooltip();
+
+    svg.selectAll("rect")
+      .data(barData)
+      .enter()
+      .append("rect")
+      .attr("x", d => x(d.Manufacturer))
+      .attr("y", d => y(d.MPG))
+      .attr("width", x.bandwidth())
+      .attr("height", d => height - margin.bottom - y(d.MPG))
+      .attr("fill", "orange")
+      .on("mouseover", (event, d) => {
+        tooltip.html(`Manufacturer: ${d.Manufacturer}<br>MPG: ${d.MPG.toFixed(1)}`)
+          .style("visibility", "visible")
+          .style("top", `${event.pageY - 10}px`)
+          .style("left", `${event.pageX + 10}px`);
+      })
+      .on("mousemove", (event) => {
+        tooltip.style("top", `${event.pageY - 10}px`).style("left", `${event.pageX + 10}px`);
+      })
+      .on("mouseout", () => tooltip.style("visibility", "hidden"));
+  }
+
+  function renderScatter(data) {
+    d3.select('#chart-hp-mpg').selectAll("*").remove();
+    const width = 500, height = 350, margin = {top: 40, right: 30, bottom: 50, left: 60};
 
     const x = d3.scaleLinear()
       .domain(d3.extent(data, d => d.Horsepower)).nice()
@@ -82,15 +147,18 @@ document.addEventListener('DOMContentLoaded', () => {
       .domain(d3.extent(data, d => d.MPG)).nice()
       .range([height - margin.bottom, margin.top]);
 
+    const svg = d3.select('#chart-hp-mpg')
+      .append("svg")
+      .attr("width", width)
+      .attr("height", height);
+
     svg.append("g")
       .attr("transform", `translate(0,${height - margin.bottom})`)
       .call(d3.axisBottom(x));
-
     svg.append("g")
       .attr("transform", `translate(${margin.left},0)`)
       .call(d3.axisLeft(y));
 
-    // Axis labels
     svg.append("text")
       .attr("x", width / 2)
       .attr("y", height - 5)
@@ -104,19 +172,12 @@ document.addEventListener('DOMContentLoaded', () => {
       .attr("text-anchor", "middle")
       .text("MPG");
 
-    // Tooltip
-    const tooltip = d3.select("body").append("div")
-      .attr("class", "tooltip")
-      .style("position", "absolute")
-      .style("visibility", "hidden")
-      .style("background", "#f9f9f9")
-      .style("padding", "8px")
-      .style("border", "1px solid #ccc")
-      .style("border-radius", "4px");
+    const tooltip = createTooltip();
 
     svg.selectAll("circle")
       .data(data)
-      .join("circle")
+      .enter()
+      .append("circle")
       .attr("cx", d => x(d.Horsepower))
       .attr("cy", d => y(d.MPG))
       .attr("r", 5)
@@ -134,23 +195,17 @@ document.addEventListener('DOMContentLoaded', () => {
       .on("mouseout", () => tooltip.style("visibility", "hidden"));
   }
 
-  function renderBarChart(data) {
+  function renderBar(data) {
     d3.select('#chart-weight').selectAll("*").remove();
+    const width = 500, height = 350, margin = {top: 40, right: 30, bottom: 50, left: 60};
 
-    const width = 500, height = 350, margin = { top: 40, right: 30, bottom: 50, left: 60 };
-
-    const grouped = d3.rollup(
-      data,
-      v => d3.mean(v, d => d.Weight),
-      d => d.Origin
-    );
-
+    const grouped = d3.rollup(data, v => d3.mean(v, d => d.Weight), d => d.Origin);
     const barData = Array.from(grouped, ([Origin, Weight]) => ({ Origin, Weight }));
 
     const x = d3.scaleBand()
       .domain(barData.map(d => d.Origin))
       .range([margin.left, width - margin.right])
-      .padding(0.3);
+      .padding(0.2);
 
     const y = d3.scaleLinear()
       .domain([0, d3.max(barData, d => d.Weight)]).nice()
@@ -164,7 +219,6 @@ document.addEventListener('DOMContentLoaded', () => {
     svg.append("g")
       .attr("transform", `translate(0,${height - margin.bottom})`)
       .call(d3.axisBottom(x));
-
     svg.append("g")
       .attr("transform", `translate(${margin.left},0)`)
       .call(d3.axisLeft(y));
@@ -182,25 +236,19 @@ document.addEventListener('DOMContentLoaded', () => {
       .attr("text-anchor", "middle")
       .text("Average Weight");
 
-    const tooltip = d3.select("body").append("div")
-      .attr("class", "tooltip")
-      .style("position", "absolute")
-      .style("visibility", "hidden")
-      .style("background", "#f9f9f9")
-      .style("padding", "8px")
-      .style("border", "1px solid #ccc")
-      .style("border-radius", "4px");
+    const tooltip = createTooltip();
 
     svg.selectAll("rect")
       .data(barData)
-      .join("rect")
+      .enter()
+      .append("rect")
       .attr("x", d => x(d.Origin))
       .attr("y", d => y(d.Weight))
       .attr("width", x.bandwidth())
       .attr("height", d => height - margin.bottom - y(d.Weight))
       .attr("fill", "teal")
       .on("mouseover", (event, d) => {
-        tooltip.html(`Origin: ${d.Origin}<br>Avg Weight: ${d.Weight.toFixed(1)}`)
+        tooltip.html(`Origin: ${d.Origin}<br>Weight: ${d.Weight.toFixed(1)}`)
           .style("visibility", "visible")
           .style("top", `${event.pageY - 10}px`)
           .style("left", `${event.pageX + 10}px`);
@@ -209,6 +257,17 @@ document.addEventListener('DOMContentLoaded', () => {
         tooltip.style("top", `${event.pageY - 10}px`).style("left", `${event.pageX + 10}px`);
       })
       .on("mouseout", () => tooltip.style("visibility", "hidden"));
+  }
+
+  function createTooltip() {
+    return d3.select("body").append("div")
+      .attr("class", "tooltip")
+      .style("position", "absolute")
+      .style("visibility", "hidden")
+      .style("background", "#f9f9f9")
+      .style("padding", "8px")
+      .style("border", "1px solid #ccc")
+      .style("border-radius", "4px");
   }
 });
 
