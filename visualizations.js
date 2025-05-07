@@ -18,20 +18,6 @@ class CarVisualization {
     async init() {
         await this.loadData();
         this.initControls();
-        
-        // Create tooltip div
-        this.tooltip = d3.select("body")
-          .append("div")
-          .attr("class", "tooltip")
-          .style("position", "absolute")
-          .style("padding", "6px 10px")
-          .style("background", "rgba(0, 0, 0, 0.7)")
-          .style("color", "#fff")
-          .style("border-radius", "4px")
-          .style("font-size", "12px")
-          .style("pointer-events", "none")
-          .style("opacity", 0);
-
         this.createVisualizations();
     }
 
@@ -83,7 +69,7 @@ class CarVisualization {
             .data(["all", ...cylinders])
             .join("option")
             .attr("value", d => d)
-            .text(d => d === "all" ? "All Cylinders" : `${d} cylinders`);
+            .text(d => d === "all" ? "All Cylinders" : ${d} cylinders);
 
         // Event listeners
         d3.selectAll(".filter").on("change", () => this.applyFilters());
@@ -130,7 +116,7 @@ class CarVisualization {
             .attr("width", this.width + this.margin.left + this.margin.right)
             .attr("height", this.height + this.margin.top + this.margin.bottom)
             .append("g")
-            .attr("transform", `translate(${this.margin.left},${this.margin.top})`);
+            .attr("transform", translate(${this.margin.left},${this.margin.top}));
 
         // Calculate average MPG by manufacturer
         const avgMPG = d3.rollups(
@@ -167,20 +153,6 @@ class CarVisualization {
                 data.some(car => car.Manufacturer === d.Manufacturer && this.selectedPoints.has(car.Car)))
             .on("click", (event, d) => {
     this.selectedPoints = new Set(
-.on("mouseover", (event, d) => {
-    this.tooltip
-        .style("opacity", 1)
-        .html(`<strong>${d.Manufacturer}</strong><br>Avg MPG: ${d.MPG.toFixed(1)}`);
-})
-.on("mousemove", (event) => {
-    this.tooltip
-        .style("left", (event.pageX + 10) + "px")
-        .style("top", (event.pageY - 28) + "px");
-})
-.on("mouseout", () => {
-    this.tooltip.style("opacity", 0);
-})
-
         this.data.filter(car => car.Manufacturer === d.Manufacturer).map(c => c.Car)
     );
     this.updateVisualizations();
@@ -190,13 +162,13 @@ class CarVisualization {
         .attr("class", "label")
         .attr("x", x(d.MPG) + 10)
         .attr("y", y(d.Manufacturer) + y.bandwidth() / 2 + 5)
-        .text(`${d.Manufacturer}: ${d.MPG.toFixed(1)} MPG`)
+        .text(${d.Manufacturer}: ${d.MPG.toFixed(1)} MPG)
         .attr("fill", "black");
 })
 
         // Add axes
         svg.append("g")
-            .attr("transform", `translate(0,${this.height})`)
+            .attr("transform", translate(0,${this.height}))
             .call(d3.axisBottom(x));
 
         svg.append("g")
@@ -218,7 +190,7 @@ class CarVisualization {
             .attr("width", this.width + this.margin.left + this.margin.right)
             .attr("height", this.height + this.margin.top + this.margin.bottom)
             .append("g")
-            .attr("transform", `translate(${this.margin.left},${this.margin.top})`);
+            .attr("transform", translate(${this.margin.left},${this.margin.top}));
 
         // Create scales
         const x = d3.scaleLinear()
@@ -246,35 +218,7 @@ class CarVisualization {
             .attr("opacity", 0.7)
             .classed("highlighted", d => this.selectedPoints.has(d.Car))
             .on("click", (event, d) => {
-    this.selectedPoints = new Set(
-.on("mouseover", (event, d) => {
-    this.tooltip
-        .style("opacity", 1)
-        .html(`<strong>${d.Manufacturer}</strong><br>Avg MPG: ${d.MPG.toFixed(1)}`);
-})
-.on("mousemove", (event) => {
-    this.tooltip
-        .style("left", (event.pageX + 10) + "px")
-        .style("top", (event.pageY - 28) + "px");
-})
-.on("mouseout", () => {
-    this.tooltip.style("opacity", 0);
-})
-[d.Car]);
-.on("mouseover", (event, d) => {
-    this.tooltip
-        .style("opacity", 1)
-        .html(`<strong>${d.Car}</strong><br>MPG: ${d.MPG}<br>HP: ${d.Horsepower}`);
-})
-.on("mousemove", (event) => {
-    this.tooltip
-        .style("left", (event.pageX + 10) + "px")
-        .style("top", (event.pageY - 28) + "px");
-})
-.on("mouseout", () => {
-    this.tooltip.style("opacity", 0);
-})
-
+    this.selectedPoints = new Set([d.Car]);
     this.updateVisualizations();
     
     // Remove old labels
@@ -287,7 +231,7 @@ class CarVisualization {
         .attr("y", y(d.MPG) - 10)
         .attr("fill", "black")
         .attr("font-size", "12px")
-        .text(`${d.Car} (${d.MPG} MPG)`);
+        .text(${d.Car} (${d.MPG} MPG));
 })
 
         // Add brush
@@ -317,7 +261,7 @@ class CarVisualization {
 
         // Add axes
         svg.append("g")
-            .attr("transform", `translate(0,${this.height})`)
+            .attr("transform", translate(0,${this.height}))
             .call(d3.axisBottom(x));
 
         svg.append("g")
@@ -346,7 +290,7 @@ class CarVisualization {
             .attr("width", this.width + this.margin.left + this.margin.right)
             .attr("height", this.height + this.margin.top + this.margin.bottom)
             .append("g")
-            .attr("transform", `translate(${this.margin.left},${this.margin.top})`);
+            .attr("transform", translate(${this.margin.left},${this.margin.top}));
 
         // Group data by origin
         const groups = d3.groups(data, d => d.Origin);
@@ -389,20 +333,6 @@ class CarVisualization {
                 .attr("fill", color(origin))
                 .attr("stroke", "#000")
                 .attr("class", "data-point")
-.on("mouseover", (event) => {
-    this.tooltip
-        .style("opacity", 1)
-        .html(`<strong>${origin}</strong><br>Median Weight: ${median.toFixed(0)} lbs`);
-})
-.on("mousemove", (event) => {
-    this.tooltip
-        .style("left", (event.pageX + 10) + "px")
-        .style("top", (event.pageY - 28) + "px");
-})
-.on("mouseout", () => {
-    this.tooltip.style("opacity", 0);
-})
-
 .on("click", (event) => {
     const carNames = values.map(v => v.Car);
     this.selectedPoints = new Set(carNames);
@@ -414,7 +344,7 @@ class CarVisualization {
         .attr("x", xPos + 10)
         .attr("y", y(median) - 10)
         .attr("fill", "black")
-        .text(`${origin}: Median ${median.toFixed(0)} lbs`);
+        .text(${origin}: Median ${median.toFixed(0)} lbs);
 })
 
                 .classed("highlighted", () => 
@@ -463,20 +393,6 @@ class CarVisualization {
                 .attr("fill", color(origin))
                 .attr("stroke", "#000")
                 .attr("class", "data-point")
-.on("mouseover", (event) => {
-    this.tooltip
-        .style("opacity", 1)
-        .html(`<strong>${origin}</strong><br>Median Weight: ${median.toFixed(0)} lbs`);
-})
-.on("mousemove", (event) => {
-    this.tooltip
-        .style("left", (event.pageX + 10) + "px")
-        .style("top", (event.pageY - 28) + "px");
-})
-.on("mouseout", () => {
-    this.tooltip.style("opacity", 0);
-})
-
 .on("click", (event) => {
     const carNames = values.map(v => v.Car);
     this.selectedPoints = new Set(carNames);
@@ -488,7 +404,7 @@ class CarVisualization {
         .attr("x", xPos + 10)
         .attr("y", y(median) - 10)
         .attr("fill", "black")
-        .text(`${origin}: Median ${median.toFixed(0)} lbs`);
+        .text(${origin}: Median ${median.toFixed(0)} lbs);
 })
 
                 .classed("highlighted", d => 
@@ -497,7 +413,7 @@ class CarVisualization {
 
         // Add axes
         svg.append("g")
-            .attr("transform", `translate(0,${this.height})`)
+            .attr("transform", translate(0,${this.height}))
             .call(d3.axisBottom(x));
 
         svg.append("g")
