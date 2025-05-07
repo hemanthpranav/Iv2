@@ -296,7 +296,9 @@ class CarVisualization {
                         y(d.MPG) >= y0 && y(d.MPG) <= y1
                     ).map(d => d.Car)
                 );
-                this.persistentLabels.scatterPlot = null; // Clear label when brushing
+                if (this.selectedPoints.size !== 1) {
+                    this.persistentLabels.scatterPlot = null;
+                }
                 this.updateVisualizations();
             })
             .on("end", (event) => {
