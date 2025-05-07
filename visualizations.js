@@ -16,15 +16,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     populateFilters();
+    resetFilters();
     updateAllCharts();
 
     manufacturerSelect.addEventListener('change', updateAllCharts);
     originSelect.addEventListener('change', updateAllCharts);
     cylindersSelect.addEventListener('change', updateAllCharts);
     resetBtn.addEventListener('click', () => {
-      manufacturerSelect.selectedIndex = 0;
-      originSelect.selectedIndex = 0;
-      cylindersSelect.selectedIndex = 0;
+      resetFilters();
       updateAllCharts();
     });
   });
@@ -32,15 +31,26 @@ document.addEventListener('DOMContentLoaded', () => {
   function populateFilters() {
     const unique = key => [...new Set(rawData.map(d => d[key]))].sort();
 
+    manufacturerSelect.add(new Option("All", ""));
     unique("Manufacturer").forEach(val =>
       manufacturerSelect.add(new Option(val, val))
     );
+
+    originSelect.add(new Option("All", ""));
     unique("Origin").forEach(val =>
       originSelect.add(new Option(val, val))
     );
+
+    cylindersSelect.add(new Option("All", ""));
     unique("Cylinders").forEach(val =>
       cylindersSelect.add(new Option(val, val))
     );
+  }
+
+  function resetFilters() {
+    manufacturerSelect.value = "";
+    originSelect.value = "";
+    cylindersSelect.value = "";
   }
 
   function getFilteredData() {
@@ -300,4 +310,3 @@ document.addEventListener('DOMContentLoaded', () => {
       .style("border-radius", "4px");
   }
 });
-
