@@ -1,40 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Interactive Vehicle Dashboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Data Visualization using Cars Dataset</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header>
-    <h1>Vehicle Data Dashboard</h1>
+  <header class="main-header">
+    <h1>Data Visualization using Cars Dataset</h1>
+    <p>Analysing Car metrics through interactive visualizations</p>
+    <p class="authors">
+      by Harshitha Naidu Allenky, Rathna Sai Teja Panguluri, Sobhanadri Reddy Reddibathuni, Hemanth Pranav Malladi
+    </p>
   </header>
-  <div class="controls">
-    <label for="dataset-select">Dataset:</label>
-    <select id="dataset-select"></select>
-    <label for="x-axis-select">X-axis:</label>
-    <select id="x-axis-select"></select>
-    <label for="y-axis-select">Y-axis:</label>
-    <select id="y-axis-select"></select>
-    <label for="color-by-select">Color by:</label>
-    <select id="color-by-select"></select>
-    <label for="size-by-select">Size by:</label>
-    <select id="size-by-select"></select>
+
+  <div class="layout">
+    <!-- Sidebar with filters -->
+    <aside class="sidebar">
+      <div class="filter-group">
+        <label for="manufacturer-select">Manufacturer</label>
+        <select id="manufacturer-select"></select>
+      </div>
+      <div class="filter-group">
+        <label for="origin-select">Origin</label>
+        <select id="origin-select"></select>
+      </div>
+      <div class="filter-group">
+        <label for="cylinders-select">Cylinders</label>
+        <select id="cylinders-select"></select>
+      </div>
+      <button id="reset-btn">Reset Filters</button>
+    </aside>
+
+    <!-- Main content area -->
+    <main class="content">
+      <section class="chart-section">
+        <h2>Fuel Efficiency by Manufacturer</h2>
+        <div id="chart-fuel" class="chart-card"></div>
+      </section>
+
+      <section class="chart-section">
+        <h2>Horsepower vs MPG</h2>
+        <div id="chart-hp-mpg" class="chart-card"></div>
+      </section>
+
+      <section class="chart-section">
+        <h2>Weight Distribution by Origin</h2>
+        <div id="chart-weight" class="chart-card"></div>
+      </section>
+
+      <section class="interaction">
+        <h2>Interaction Reference</h2>
+        <ul>
+          <li><strong>Dropdown Filters</strong>: Filters all visualizations by selected criteria</li>
+          <li><strong>Click Bar (Manufacturer)</strong>: Filters views to show vehicles from that manufacturer</li>
+          <li><strong>Brush in Scatter Plot</strong>: Selects vehicles within the brushed area</li>
+          <li><strong>Click Point/Box</strong>: Selects specific vehicle(s) across views</li>
+          <li><strong>Reset Button</strong>: Clears all filters and selections</li>
+        </ul>
+      </section>
+    </main>
   </div>
-  <div id="filters"></div>
-  <div class="chart-container">
-    <div id="scatter-plot-card" class="chart-card"></div>
-    <div id="bar-chart-card" class="chart-card"></div>
-    <div id="line-chart-card" class="chart-card"></div>
-    <div id="data-table-card" class="chart-card">
-      <table id="data-table">
-        <thead>
-          <tr><!-- headers will be populated by JS --></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
+
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script src="visualizations.js"></script>
 </body>
