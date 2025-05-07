@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function () {
-  const datasetSelect = document.getElementById('dataset-select');
   const xSelect = document.getElementById('x-select');
   const ySelect = document.getElementById('y-select');
   const colorSelect = document.getElementById('color-select');
@@ -22,14 +21,11 @@ document.addEventListener('DOMContentLoaded', function () {
       return parsed;
     });
 
-    // Identify column types
+    // Detect column types
     const sample = data[0];
     for (const key in sample) {
-      if (typeof sample[key] === 'number') {
-        numericCols.push(key);
-      } else {
-        categoricalCols.push(key);
-      }
+      if (typeof sample[key] === 'number') numericCols.push(key);
+      else categoricalCols.push(key);
     }
 
     // Populate dropdowns
@@ -38,43 +34,37 @@ document.addEventListener('DOMContentLoaded', function () {
       ySelect.add(new Option(col, col));
       sizeSelect.add(new Option(col, col));
     });
-
     categoricalCols.forEach(col => {
       colorSelect.add(new Option(col, col));
     });
 
-    // Populate origin filter
     const origins = Array.from(new Set(data.map(d => d.Origin)));
     originFilter.add(new Option("All", "All"));
     origins.forEach(origin => {
       originFilter.add(new Option(origin, origin));
     });
 
-    // Initial draw
-    renderScatterPlot();
-    renderBarChart();
+    renderScatter();
+    renderBar();
   });
 
-  // Event listeners
-  xSelect.addEventListener('change', renderScatterPlot);
-  ySelect.addEventListener('change', renderScatterPlot);
-  colorSelect.addEventListener('change', renderScatterPlot);
-  sizeSelect.addEventListener('change', renderScatterPlot);
+  xSelect.addEventListener('change', renderScatter);
+  ySelect.addEventListener('change', renderScatter);
+  colorSelect.addEventListener('change', renderScatter);
+  sizeSelect.addEventListener('change', renderScatter);
   originFilter.addEventListener('change', () => {
-    renderScatterPlot();
-    renderBarChart();
+    renderScatter();
+    renderBar();
   });
 
-  function renderScatterPlot() {
+  function renderScatter() {
     const xVar = xSelect.value;
     const yVar = ySelect.value;
     const colorVar = colorSelect.value;
     const sizeVar = sizeSelect.value;
-    const selectedOrigin = originFilter.value;
+    const filter = originFilter.value;
 
-    const filtered = selectedOrigin === "All"
-      ? data
-      : data.filter(d => d.Origin === selectedOrigin);
+    const filtered = filter === "All" ? data : data.filter(d => d.Origin === filter);
 
     d3.select('#scatter-plot').remove();
 
@@ -85,41 +75,16 @@ document.addEventListener('DOMContentLoaded', function () {
       .attr("width", width)
       .attr("height", height);
 
-    const xScale = d3.scaleLinear()
-      .domain(d3.extent(filtered, d => d[xVar])).nice()
-      .range([margin.left, width - margin.right]);
+    const x = d3.scaleLinear().domain(d3.extent(filtered, d => d[xVar])).nice().range([margin.left, width - margin.right]);
+    const y = d3.scaleLinear().domain(d3.extent(filtered, d => d[yVar])).nice().range([height - margin.bottom, margin.top]);
+    const color = d3.scaleOrdinal(d3.schemeCategory10);
+    const size = d3.scaleLinear().domain(d3.extent(filtered, d => d[sizeVar])).nice().range([5, 12]);
 
-    const yScale = d3.scaleLinear()
-      .domain(d3.extent(filtered, d => d[yVar])).nice()
-      .range([height - margin.bottom, margin.top]);
+    svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x));
+    svg.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(y));
 
-    const colorScale = d3.scaleOrdinal(d3.schemeTableau10);
-    const sizeScale = d3.scaleLinear()
-      .domain(d3.extent(filtered, d => d[sizeVar])).nice()
-      .range([5, 15]);
-
-    // Axes
-    svg.append("g")
-      .attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(xScale));
-
-    svg.append("g")
-      .attr("transform", `translate(${margin.left},0)`)
-      .call(d3.axisLeft(yScale));
-
-    // Axis Labels
-    svg.append("text")
-      .attr("x", width / 2)
-      .attr("y", height - 10)
-      .attr("text-anchor", "middle")
-      .text(xVar);
-
-    svg.append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("x", -height / 2)
-      .attr("y", 15)
-      .attr("text-anchor", "middle")
-      .text(yVar);
+    svg.append("text").attr("x", width / 2).attr("y", height - 10).attr("text-anchor", "middle").text(xVar);
+    svg.append("text").attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 15).attr("text-anchor", "middle").text(yVar);
 
     const tooltip = d3.select("body").append("div")
       .attr("class", "tooltip")
@@ -132,33 +97,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
     svg.selectAll("circle")
       .data(filtered)
-      .join("circle")
-      .attr("cx", d => xScale(d[xVar]))
-      .attr("cy", d => yScale(d[yVar]))
-      .attr("r", d => sizeScale(d[sizeVar]))
-      .attr("fill", d => colorScale(d[colorVar]))
+      .enter()
+      .append("circle")
+      .attr("cx", d => x(d[xVar]))
+      .attr("cy", d => y(d[yVar]))
+      .attr("r", d => size(d[sizeVar]))
+      .attr("fill", d => color(d[colorVar]))
       .attr("opacity", 0.7)
       .on("mouseover", (event, d) => {
-        tooltip
-          .html(`${xVar}: ${d[xVar]}<br>${yVar}: ${d[yVar]}<br>${colorVar}: ${d[colorVar]}<br>${sizeVar}: ${d[sizeVar]}`)
+        tooltip.html(`${xVar}: ${d[xVar]}<br>${yVar}: ${d[yVar]}<br>${colorVar}: ${d[colorVar]}<br>${sizeVar}: ${d[sizeVar]}`)
           .style("visibility", "visible")
           .style("top", `${event.pageY - 10}px`)
           .style("left", `${event.pageX + 10}px`);
       })
       .on("mousemove", (event) => {
-        tooltip
-          .style("top", `${event.pageY - 10}px`)
-          .style("left", `${event.pageX + 10}px`);
+        tooltip.style("top", `${event.pageY - 10}px`).style("left", `${event.pageX + 10}px`);
       })
       .on("mouseout", () => tooltip.style("visibility", "hidden"));
   }
 
-  function renderBarChart() {
-    const selectedOrigin = originFilter.value;
-    const filtered = selectedOrigin === "All"
-      ? data
-      : data.filter(d => d.Origin === selectedOrigin);
-
+  function renderBar() {
+    const filter = originFilter.value;
+    const filtered = filter === "All" ? data : data.filter(d => d.Origin === filter);
     const counts = d3.rollup(filtered, v => v.length, d => d.Origin);
     const barData = Array.from(counts, ([origin, count]) => ({ origin, count }));
 
@@ -171,36 +131,14 @@ document.addEventListener('DOMContentLoaded', function () {
       .attr("width", width)
       .attr("height", height);
 
-    const xScale = d3.scaleBand()
-      .domain(barData.map(d => d.origin))
-      .range([margin.left, width - margin.right])
-      .padding(0.2);
+    const x = d3.scaleBand().domain(barData.map(d => d.origin)).range([margin.left, width - margin.right]).padding(0.2);
+    const y = d3.scaleLinear().domain([0, d3.max(barData, d => d.count)]).nice().range([height - margin.bottom, margin.top]);
 
-    const yScale = d3.scaleLinear()
-      .domain([0, d3.max(barData, d => d.count)]).nice()
-      .range([height - margin.bottom, margin.top]);
+    svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x));
+    svg.append("g").attr("transform", `translate(${margin.left},0)`).call(d3.axisLeft(y));
 
-    svg.append("g")
-      .attr("transform", `translate(0,${height - margin.bottom})`)
-      .call(d3.axisBottom(xScale));
-
-    svg.append("g")
-      .attr("transform", `translate(${margin.left},0)`)
-      .call(d3.axisLeft(yScale));
-
-    // Axis Labels
-    svg.append("text")
-      .attr("x", width / 2)
-      .attr("y", height - 10)
-      .attr("text-anchor", "middle")
-      .text("Origin");
-
-    svg.append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("x", -height / 2)
-      .attr("y", 15)
-      .attr("text-anchor", "middle")
-      .text("Count");
+    svg.append("text").attr("x", width / 2).attr("y", height - 10).attr("text-anchor", "middle").text("Origin");
+    svg.append("text").attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 15).attr("text-anchor", "middle").text("Count");
 
     const tooltip = d3.select("body").append("div")
       .attr("class", "tooltip")
@@ -213,25 +151,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     svg.selectAll("rect")
       .data(barData)
-      .join("rect")
-      .attr("x", d => xScale(d.origin))
-      .attr("y", d => yScale(d.count))
-      .attr("width", xScale.bandwidth())
-      .attr("height", d => height - margin.bottom - yScale(d.count))
+      .enter()
+      .append("rect")
+      .attr("x", d => x(d.origin))
+      .attr("y", d => y(d.count))
+      .attr("width", x.bandwidth())
+      .attr("height", d => height - margin.bottom - y(d.count))
       .attr("fill", "steelblue")
       .on("mouseover", (event, d) => {
-        tooltip
-          .html(`Origin: ${d.origin}<br>Count: ${d.count}`)
+        tooltip.html(`Origin: ${d.origin}<br>Count: ${d.count}`)
           .style("visibility", "visible")
           .style("top", `${event.pageY - 10}px`)
           .style("left", `${event.pageX + 10}px`);
       })
       .on("mousemove", (event) => {
-        tooltip
-          .style("top", `${event.pageY - 10}px`)
-          .style("left", `${event.pageX + 10}px`);
+        tooltip.style("top", `${event.pageY - 10}px`).style("left", `${event.pageX + 10}px`);
       })
       .on("mouseout", () => tooltip.style("visibility", "hidden"));
   }
 });
-
