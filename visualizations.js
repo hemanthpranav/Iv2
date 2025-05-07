@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const c = cylindersSelect.value;
 
     return rawData.filter(d =>
-   (!m || d.Manufacturer === m) &&
+      (!m || d.Manufacturer === m) &&
       (!o || d.Origin === o) &&
       (!c || d.Cylinders == c)
     );
@@ -63,15 +63,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderFuelChart(data) {
-    d3.select('#chart-fuel').selectAll("*").remove();
-    const width = 500, height = 350, margin = {top: 40, right: 30, bottom: 50, left: 60};
+    const container = d3.select('#chart-fuel');
+    container.selectAll("*").remove();
 
-    const grouped = d3.rollup(
-      data,
-      v => d3.mean(v, d => d.MPG),
-      d => d.Manufacturer
-    );
+    if (data.length === 0) {
+      container.append("p")
+        .text("No data available for selected filters.")
+        .style("color", "red")
+        .style("font-weight", "bold")
+        .style("padding", "1rem");
+      return;
+    }
 
+    const width = 500, height = 350, margin = { top: 40, right: 30, bottom: 50, left: 60 };
+
+    const grouped = d3.rollup(data, v => d3.mean(v, d => d.MPG), d => d.Manufacturer);
     const barData = Array.from(grouped, ([Manufacturer, MPG]) => ({ Manufacturer, MPG }));
 
     const x = d3.scaleBand()
@@ -83,8 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .domain([0, d3.max(barData, d => d.MPG)]).nice()
       .range([height - margin.bottom, margin.top]);
 
-    const svg = d3.select('#chart-fuel')
-      .append("svg")
+    const svg = container.append("svg")
       .attr("width", width)
       .attr("height", height);
 
@@ -130,14 +135,26 @@ document.addEventListener('DOMContentLoaded', () => {
           .style("left", `${event.pageX + 10}px`);
       })
       .on("mousemove", (event) => {
-        tooltip.style("top", `${event.pageY - 10}px`).style("left", `${event.pageX + 10}px`);
+        tooltip.style("top", `${event.pageY - 10}px`)
+          .style("left", `${event.pageX + 10}px`);
       })
       .on("mouseout", () => tooltip.style("visibility", "hidden"));
   }
 
   function renderScatter(data) {
-    d3.select('#chart-hp-mpg').selectAll("*").remove();
-    const width = 500, height = 350, margin = {top: 40, right: 30, bottom: 50, left: 60};
+    const container = d3.select('#chart-hp-mpg');
+    container.selectAll("*").remove();
+
+    if (data.length === 0) {
+      container.append("p")
+        .text("No data available for selected filters.")
+        .style("color", "red")
+        .style("font-weight", "bold")
+        .style("padding", "1rem");
+      return;
+    }
+
+    const width = 500, height = 350, margin = { top: 40, right: 30, bottom: 50, left: 60 };
 
     const x = d3.scaleLinear()
       .domain(d3.extent(data, d => d.Horsepower)).nice()
@@ -147,14 +164,14 @@ document.addEventListener('DOMContentLoaded', () => {
       .domain(d3.extent(data, d => d.MPG)).nice()
       .range([height - margin.bottom, margin.top]);
 
-    const svg = d3.select('#chart-hp-mpg')
-      .append("svg")
+    const svg = container.append("svg")
       .attr("width", width)
       .attr("height", height);
 
     svg.append("g")
       .attr("transform", `translate(0,${height - margin.bottom})`)
       .call(d3.axisBottom(x));
+
     svg.append("g")
       .attr("transform", `translate(${margin.left},0)`)
       .call(d3.axisLeft(y));
@@ -190,14 +207,26 @@ document.addEventListener('DOMContentLoaded', () => {
           .style("left", `${event.pageX + 10}px`);
       })
       .on("mousemove", (event) => {
-        tooltip.style("top", `${event.pageY - 10}px`).style("left", `${event.pageX + 10}px`);
+        tooltip.style("top", `${event.pageY - 10}px`)
+          .style("left", `${event.pageX + 10}px`);
       })
       .on("mouseout", () => tooltip.style("visibility", "hidden"));
   }
 
   function renderBar(data) {
-    d3.select('#chart-weight').selectAll("*").remove();
-    const width = 500, height = 350, margin = {top: 40, right: 30, bottom: 50, left: 60};
+    const container = d3.select('#chart-weight');
+    container.selectAll("*").remove();
+
+    if (data.length === 0) {
+      container.append("p")
+        .text("No data available for selected filters.")
+        .style("color", "red")
+        .style("font-weight", "bold")
+        .style("padding", "1rem");
+      return;
+    }
+
+    const width = 500, height = 350, margin = { top: 40, right: 30, bottom: 50, left: 60 };
 
     const grouped = d3.rollup(data, v => d3.mean(v, d => d.Weight), d => d.Origin);
     const barData = Array.from(grouped, ([Origin, Weight]) => ({ Origin, Weight }));
@@ -211,14 +240,14 @@ document.addEventListener('DOMContentLoaded', () => {
       .domain([0, d3.max(barData, d => d.Weight)]).nice()
       .range([height - margin.bottom, margin.top]);
 
-    const svg = d3.select('#chart-weight')
-      .append("svg")
+    const svg = container.append("svg")
       .attr("width", width)
       .attr("height", height);
 
     svg.append("g")
       .attr("transform", `translate(0,${height - margin.bottom})`)
       .call(d3.axisBottom(x));
+
     svg.append("g")
       .attr("transform", `translate(${margin.left},0)`)
       .call(d3.axisLeft(y));
@@ -254,7 +283,8 @@ document.addEventListener('DOMContentLoaded', () => {
           .style("left", `${event.pageX + 10}px`);
       })
       .on("mousemove", (event) => {
-        tooltip.style("top", `${event.pageY - 10}px`).style("left", `${event.pageX + 10}px`);
+        tooltip.style("top", `${event.pageY - 10}px`)
+          .style("left", `${event.pageX + 10}px`);
       })
       .on("mouseout", () => tooltip.style("visibility", "hidden"));
   }
